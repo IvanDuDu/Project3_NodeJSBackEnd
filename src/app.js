@@ -1,12 +1,14 @@
 // src/app.js
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 // Import routes
 const userRoutes = require('./routes/userRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
 const pairRoutes = require('./routes/pairRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
@@ -19,9 +21,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files (uploaded images)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Request logging middleware
 app.use((req, res, next) => {
-  console.log(`📨 ${req.method} ${req.path}`);
+  console.log(` ${req.method} ${req.path}`);
   next();
 });
 
@@ -38,6 +43,7 @@ app.get('/health', (req, res) => {
 app.use('/api/user', userRoutes);
 app.use('/api', deviceRoutes);
 app.use('/api/pair', pairRoutes);
+app.use('/upload', uploadRoutes);
 
 // 404 handler
 app.use(notFound);

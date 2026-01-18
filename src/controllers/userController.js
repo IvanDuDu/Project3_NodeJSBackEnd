@@ -54,7 +54,7 @@ const register = async (req, res, next) => {
     // Generate token
     const token = generateJWT(user._id);
 
-    console.log(`✅ User registered: ${username}`);
+    console.log(` User registered: ${username}`);
 
     res.status(201).json({
       success: true,
@@ -108,7 +108,7 @@ const login = async (req, res, next) => {
     // Generate token
     const token = generateJWT(user._id);
 
-    console.log(`✅ User logged in: ${username}`);
+    console.log(` User logged in: ${username}`);
 
     res.status(200).json({
       success: true,
@@ -150,7 +150,7 @@ const deleteAccount = async (req, res, next) => {
     // Delete user
     await User.findByIdAndDelete(userId);
 
-    console.log(`✅ User account deleted: ${user.username}`);
+    console.log(` User account deleted: ${user.username}`);
 
     res.status(200).json({
       success: true,
@@ -230,7 +230,7 @@ const updateAccount = async (req, res, next) => {
 
     await user.save();
 
-    console.log(`✅ User account updated: ${user.username}`);
+    console.log(` User account updated: ${user.username}`);
 
     res.status(200).json({
       success: true,

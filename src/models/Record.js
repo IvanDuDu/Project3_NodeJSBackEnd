@@ -7,6 +7,11 @@ const recordSchema = new mongoose.Schema({
     required: [true, 'Folder name is required'],
     trim: true
   },
+  encodeName:{
+    type: String,
+    required: [true, 'Encoded name is required'],
+    trim: true
+  },
   deviceId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Device',

@@ -48,14 +48,14 @@ const initiatePairing = async (req, res, next) => {
       const existingDevice = await Device.findOne({ token });
       tokenExists = !!existingDevice;
     }
+    console.log(` Pairing initiated for user: ${userID}, Token: ${token}`);
 
-    console.log(`🔄 Pairing initiated for user: ${userID}, Token: ${token}`);
-
-    // Start waiting for device to connect with this token
-    // This is an async operation that will complete when device responds
+    // Start waiting for device to connect with this token (async operation)
     mqttService.waitForPairing(token, 300000) // 5 minutes timeout
       .then(async (deviceData) => {
         try {
+          console.log(` Device confirmed pairing with token: ${token}`);
+
           // Create new device
           const device = await Device.create({
             token,
@@ -68,13 +68,13 @@ const initiatePairing = async (req, res, next) => {
           user.deviceList.push(device._id);
           await user.save();
 
-          console.log(`✅ Device paired successfully: ${token} for user: ${userID}`);
+          console.log(` Device paired successfully: ${token} for user: ${userID}`);
         } catch (error) {
-          console.error('❌ Error completing pairing:', error);
+          console.error(' Error completing pairing:', error);
         }
       })
       .catch((error) => {
-        console.error(`❌ Pairing timeout for token: ${token}`, error.message);
+        console.error(` Pairing timeout for token: ${token}`, error.message);
       });
 
     // Return token immediately to client
@@ -84,7 +84,7 @@ const initiatePairing = async (req, res, next) => {
       data: {
         token,
         expiresIn: '5 minutes',
-        instructions: `Configure your device to publish to topic: api/${token}/pair`
+        instructions: 'Configure your device to publish to topic: api/' + token + '/pair'
       }
     });
   } catch (error) {
@@ -121,10 +121,16 @@ const checkPairingStatus = async (req, res, next) => {
     const device = await Device.findOne({ token });
 
     if (!device) {
+      // Check if there's a pending pairing request
+      const hasPending = mqttService.hasPendingPairing(token);
+      
       return res.status(200).json({
         success: true,
         paired: false,
-        message: 'Device not yet paired. Waiting for device connection...'
+        pending: hasPending,
+        message: hasPending 
+          ? 'Waiting for device to confirm pairing...' 
+          : 'No pairing request found for this token. Token may have expired.'
       });
     }
 
@@ -151,6 +157,45 @@ const checkPairingStatus = async (req, res, next) => {
         status: device.status,
         pairedAt: device.createdAt
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Cancel pending pairing request
+ * @route   DELETE /api/pair/:userID/cancel/:token
+ * @access  Private
+ */
+const cancelPairing = async (req, res, next) => {
+  try {
+    const { userID, token } = req.params;
+
+    // Validation
+    if (!isValidObjectId(userID)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    // Check authorization
+    if (req.user._id.toString() !== userID) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Cancel the pairing request
+    mqttService.cancelPairing(token);
+
+    console.log(`🚫 Pairing cancelled for token: ${token}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Pairing request cancelled'
     });
   } catch (error) {
     next(error);
@@ -209,7 +254,7 @@ const unpairDevice = async (req, res, next) => {
     // Delete the device
     await Device.findByIdAndDelete(deviceID);
 
-    console.log(`✅ Device unpaired: ${deviceID} from user: ${userID}`);
+    console.log(`🔓 Device unpaired: ${deviceID} from user: ${userID}`);
 
     res.status(200).json({
       success: true,
@@ -247,7 +292,6 @@ const getPairedDevices = async (req, res, next) => {
 
     const user = await User.findById(userID).populate({
       path: 'deviceList',
-      match: { isPaired: true },
       select: 'token status lastSeen isPaired createdAt'
     });
 
@@ -268,9 +312,30 @@ const getPairedDevices = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get all pending pairing requests (admin/debug)
+ * @route   GET /api/pair/pending
+ * @access  Private
+ */
+const getPendingPairings = async (req, res, next) => {
+  try {
+    const pendingTokens = mqttService.getPendingPairings();
+
+    res.status(200).json({
+      success: true,
+      count: pendingTokens.length,
+      data: pendingTokens
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   initiatePairing,
   checkPairingStatus,
+  cancelPairing,
   unpairDevice,
-  getPairedDevices
+  getPairedDevices,
+  getPendingPairings
 };

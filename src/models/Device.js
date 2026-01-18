@@ -28,13 +28,9 @@ const deviceSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  streamingUrl: {
+  ipAdress : {
     type: String,
-    default: null
-  },
-  isPaired: {
-    type: Boolean,
-    default: false
+    default: ''
   },
   createdAt: {
     type: Date,

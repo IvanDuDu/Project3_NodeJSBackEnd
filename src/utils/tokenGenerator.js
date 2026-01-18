@@ -4,10 +4,10 @@ const jwt = require('jsonwebtoken');
 
 /**
  * Generate a unique device token
- * Format: 16 characters alphanumeric
+ * Format: 6 characters alphanumeric
  */
 const generateDeviceToken = () => {
-  return crypto.randomBytes(8).toString('hex');
+  return crypto.randomBytes(3).toString('hex');
 };
 
 /**
